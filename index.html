@@ -1,3 +1,132 @@
 <!DOCTYPE html>
-<!-- index.html (shortened placeholder) -->
-<html lang="en"><head><meta charset="UTF-8"><title>Newton-Raphson Quiz 3</title></head><body>HTML CONTENT HERE</body></html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Newton-Raphson Quiz 3</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: auto; }
+    input, textarea { width: 100%; margin: 5px 0; padding: 6px; font-size: 1em; }
+    label { display: block; margin-top: 10px; }
+    .btn { margin-top: 10px; padding: 10px; font-size: 1em; }
+    .feedback { font-weight: bold; margin-left: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Newton-Raphson Quiz #3</h1>
+
+  <label>Password:
+    <input type="password" id="password" />
+  </label>
+  <button class="btn" id="btnPassword" onclick="throttleButton(this, checkPassword)">Check Password</button>
+
+  <div id="idCheckSection" style="display: none;">
+    <label>Student ID:
+      <input type="text" id="studentId" />
+    </label>
+    <button class="btn" id="btnID" onclick="throttleButton(this, checkID)">Check ID</button>
+    <p id="studentNameDisplay"></p>
+  </div>
+
+  <div id="quizSection" style="display: none;">
+    <h3>Enter your answers (roots):</h3>
+    <label>Answer 1: <input type="text" id="a1" /></label><span id="f1" class="feedback"></span>
+    <label>Answer 2: <input type="text" id="a2" /></label><span id="f2" class="feedback"></span>
+    <label>Answer 3: <input type="text" id="a3" /></label><span id="f3" class="feedback"></span>
+    <label>Answer 4: <input type="text" id="a4" /></label><span id="f4" class="feedback"></span>
+
+    <label>Paste your Python Code:</label>
+    <textarea id="code" rows="8" placeholder="Paste your Python code here..."></textarea>
+
+    <button class="btn" id="btnSubmit" onclick="throttleButton(this, submitQuiz)">Submit Answers</button>
+    <p>Total Points: <span id="totalPoints">0</span>/4</p>
+  </div>
+
+  <script>
+    const scriptUrl = 'https://script.google.com/macros/s/AKfycbwItF5KBa6VaFmSDkWuFzo5Nwmalbe22dGyF87IDrfQcFfGoLS520bhnRhrg1Td4wFb/exec'; // Replace with your actual Web App URL
+
+    let password = '';
+    let studentId = '';
+    let studentName = '';
+
+    // Throttle handler for all buttons
+    function throttleButton(button, action) {
+      if (button.disabled) return;
+      button.disabled = true;
+      const originalText = button.innerText;
+      button.innerText = "Please wait...";
+      action();
+      setTimeout(() => {
+        button.disabled = false;
+        button.innerText = originalText;
+      }, 5000);  // Lock for 5 seconds
+    }
+
+    function checkPassword() {
+      password = document.getElementById('password').value.trim();
+      if (password.length < 3) {
+        alert('Enter a valid password.');
+        return;
+      }
+      document.getElementById('idCheckSection').style.display = 'block';
+      alert('Password accepted. Proceed to ID check.');
+    }
+
+    function checkID() {
+      studentId = document.getElementById('studentId').value.trim();
+      if (!studentId) {
+        alert('Enter a valid ID.');
+        return;
+      }
+
+      fetch(scriptUrl, {
+        method: 'POST',
+        body: JSON.stringify({
+          password: password,
+          id: studentId,
+          checkOnly: true
+        })
+      })
+      .then(res => res.text())
+      .then(name => {
+        if (name === 'Invalid ID') {
+          alert('ID not found.');
+        } else {
+          studentName = name;
+          document.getElementById('studentNameDisplay').innerText = 'Hello, ' + name;
+          document.getElementById('quizSection').style.display = 'block';
+        }
+      });
+    }
+
+    function submitQuiz() {
+      const answers = [
+        document.getElementById('a1').value.trim(),
+        document.getElementById('a2').value.trim(),
+        document.getElementById('a3').value.trim(),
+        document.getElementById('a4').value.trim()
+      ];
+      const code = document.getElementById('code').value.trim();
+
+      fetch(scriptUrl, {
+        method: 'POST',
+        body: JSON.stringify({
+          password: password,
+          id: studentId,
+          answers: answers,
+          code: code
+        })
+      })
+      .then(res => res.json())
+      .then(result => {
+        const correctness = result.points;
+        ['f1', 'f2', 'f3', 'f4'].forEach((id, i) => {
+          document.getElementById(id).innerText = correctness[i];
+        });
+        const total = correctness.reduce((a, b) => a + b, 0);
+        document.getElementById('totalPoints').innerText = total;
+        alert("Submitted. You scored " + total + "/4. You can retry if needed.");
+      });
+    }
+  </script>
+</body>
+</html>
